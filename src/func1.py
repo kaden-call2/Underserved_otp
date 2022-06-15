@@ -1,6 +1,7 @@
 import pandas as pd
 import geopandas as gpd
 from matplotlib import pyplot as plt
+pd.options.mode.chained_assignment = None
 
 
 # Map of every state/territory to its range of zip codes
@@ -20,7 +21,7 @@ zip_map = {
             'Connecticut': ['0' + x for x in [str(y) for y in list(range(6001, 6929))]],
             'Delaware': [str(x) for x in list(range(19701, 19981))],
             'Florida': [str(x) for x in list(range(32003, 34998))],
-            'Georgia': [str(x) for x in list(range(30002, 39902))],
+            'Georgia': [str(x) for x in list(range(30002, 32000))] + [str(x) for x in list(range(39813, 39902))],
             'Idaho': [str(x) for x in list(range(83201, 83878))],
             'Illinois': [str(x) for x in list(range(60001, 63000))],
             'Indiana': [str(x) for x in list(range(46001, 47998))],
@@ -30,7 +31,7 @@ zip_map = {
             'Louisiana': [str(x) for x in list(range(70001, 71498))],
             'Maine': ['0' + x for x in [str(y) for y in list(range(3901, 4993))]],
             'Maryland': [str(x) for x in list(range(20588, 21931))],
-            'Massachusetts': ['0' + x for x in [str(y) for y in list(range(1001, 5545))]],
+            'Massachusetts': ['0' + x for x in [str(y) for y in list(range(1001, 2792))]] + ['5501', '5544'],
             'Michigan': [str(x) for x in list(range(48001, 49972))],
             'Minnesota': [str(x) for x in list(range(55001, 56763))],
             'Mississippi': [str(x) for x in list(range(38601, 39777))],
@@ -52,14 +53,14 @@ zip_map = {
             'South Carolina': [str(x) for x in list(range(29001, 29946))],
             'South Dakota': [str(x) for x in list(range(57001, 57800))],
             'Tennessee': [str(x) for x in list(range(37010, 38590))],
-            'Texas': [str(x) for x in list(range(73301, 88596))],
+            'Texas': [str(x) for x in list(range(75001, 80000))] + [str(x) for x in list(range(88510, 88595))] + ['73301', '73344', '73960'],
             'Utah': [str(x) for x in list(range(84001, 84792))],
             'Vermont': ['0' + x for x in [str(y) for y in list(range(5001, 5908))]],
-            'Virginia': [str(x) for x in list(range(20101, 24659))],
+            'Virginia': [str(x) for x in list(range(20101, 20599))] + [str(x) for x in list(range(22003, 24659))],
             'Washington': [str(x) for x in list(range(98001, 99404))],
             'West Virginia': [str(x) for x in list(range(24701, 26887))],
             'Wisconsin': [str(x) for x in list(range(53001, 54991))],
-            'Wyoming': [str(x) for x in list(range(82001, 83415))],
+            'Wyoming': [str(x) for x in list(range(82001, 83129))] + ['83414'],
             'DC': [str(x) for x in list(range(20001, 20600))] + [str(x) for x in list(range(56901, 57000))]
             }
 
@@ -78,20 +79,20 @@ fips_map = {
 }
 territory_names = ['Puerto Rico', 'Samoa', 'Virgin Islands', 'Guam', 'Mariana']
 
-# all_states = [
-#     'Alabama', 'Alaska', 'Arizona', 'Arkansas', 'California', 'Colorado', 'Connecticut', 'Delaware',
-#     'Florida', 'Georgia', 'Hawaii', 'Idaho', 'Illinois', 'Indiana', 'Iowa', 'Kansas', 'Kentucky',
-#     'Louisiana', 'Maine', 'Maryland', 'Massachusetts', 'Michigan', 'Minnesota', 'Mississippi', 'Missouri',
-#     'Montana', 'Nebraska', 'Nevada', 'New Hampshire', 'New Jersey', 'New Mexico', 'New York',
-#     'North Carolina', 'North Dakota', 'Ohio', 'Oklahoma', 'Oregon', 'Pennsylvania', 'Rhode Island',
-#     'South Carolina', 'South Dakota', 'Tennessee', 'Texas', 'Utah', 'Vermont', 'Virginia',
-#     'Washington', 'West Virginia', 'Wisconsin', 'Wyoming'
-# ]
-
 all_states = [
-    'Tennessee', 'Texas', 'Utah', 'Vermont', 'Virginia',
+    'Alabama', 'Alaska', 'Arizona', 'Arkansas', 'California', 'Colorado', 'Connecticut', 'Delaware',
+    'Florida', 'Georgia', 'Hawaii', 'Idaho', 'Illinois', 'Indiana', 'Iowa', 'Kansas', 'Kentucky',
+    'Louisiana', 'Maine', 'Maryland', 'Massachusetts', 'Michigan', 'Minnesota', 'Mississippi', 'Missouri',
+    'Montana', 'Nebraska', 'Nevada', 'New Hampshire', 'New Jersey', 'New Mexico', 'New York',
+    'North Carolina', 'North Dakota', 'Ohio', 'Oklahoma', 'Oregon', 'Pennsylvania', 'Rhode Island',
+    'South Carolina', 'South Dakota', 'Tennessee', 'Texas', 'Utah', 'Vermont', 'Virginia',
     'Washington', 'West Virginia', 'Wisconsin', 'Wyoming'
 ]
+
+# all_states = [
+#     'Tennessee', 'Texas', 'Utah', 'Vermont', 'Virginia',
+#     'Washington', 'West Virginia', 'Wisconsin', 'Wyoming'
+# ]
 
 
 
@@ -160,23 +161,22 @@ def filter_out_states(data_orig, states, using_zips):
     return data[mask]
 
 
-# def get_zip_codes(states):
-#     zips = []
-#     if states == 'Continental':
-        
-#     elif states == 'None':
-
-#     else:
-#         for state in states:
-#             zips += zip_map[state]
-    
-#     return zips
+def get_dist_from_provider(zip):
+    provider_with_geo = provider_data.join(zip_geo_data.set_index(['ZIP'], verify_integrity=True), on=['ZIP'], how='left')
+    provider_with_geo = provider_with_geo.set_geometry(provider_with_geo['geometry'])
+    provider_with_geo = provider_with_geo.to_crs('ESRI:102008')
+    provider_with_geo = filter_out_states(provider_with_geo, 'Utah', True)
+    center = provider_with_geo['geometry'].centroid
+    test_p = provider_with_geo.plot()
+    center.plot(ax=test_p, color='orange')
+    plt.show()
 
 
 
-#Read in the zip codes
+# Read in the zip codes
 zip_geo_data = gpd.read_file('https://www2.census.gov/geo/tiger/TIGER2019/ZCTA5/tl_2019_us_zcta510.zip')
 zip_geo_data = zip_geo_data.rename(columns={'ZCTA5CE10':'ZIP'})
+# zip_geo_data = zip_geo_data.to_crs('ESRI:102008')
 
 provider_data = pd.read_csv('data/provider_data.csv')
 provider_data['ZIP'] = clean_provider_zip(provider_data['ZIP'])
@@ -195,6 +195,7 @@ rates_2019 = filter_out_territories(rates_year[-1], True)
 
 states_geo_data = gpd.read_file('https://www2.census.gov/geo/tiger/GENZ2018/shp/cb_2018_us_state_500k.zip')
 states_geo_data = filter_out_territories(states_geo_data, False)
+# states_geo_data = states_geo_data.to_crs('ESRI:102008')
 
 
 
@@ -206,6 +207,7 @@ def plot_rates(plot_states='None'):
     filter_states_geo_data = filter_out_territories(states_geo_data, False)
     filter_states_geo_data = filter_out_states(filter_states_geo_data, plot_states, False)
     state_boundary_map = filter_states_geo_data.boundary.plot(figsize=(12,9), color='Black', linewidth=.25)
+    
 
     #Filter out territories and states out of the zip outlines and zip data
     filter_zip_geo_data = filter_out_territories(zip_geo_data, True)
@@ -226,15 +228,11 @@ def plot_rates(plot_states='None'):
 
     joined_nan = joined[[x == -1 for x in joined['Tot_Opioid_Clms']]]
     joined_not_nan = joined[[x != -1 for x in joined['Tot_Opioid_Clms']]]
-    joined_nan.plot(ax=state_boundary_map, color='orange')
+    joined_nan.plot(ax=state_boundary_map, color='w')
     
     joined_not_nan.plot(ax=state_boundary_map, column='Tot_Opioid_Clms', legend=True)
     plt.title('Opiod prescriptions')
     plt.show()
-
-    # What to do next
-    # Make a difference between the entries that have a zero and a nan
-
 
 
 def plot_providers(plot_states='None'):
@@ -243,27 +241,25 @@ def plot_providers(plot_states='None'):
     state_boundary_map = filter_states_geo_data.boundary.plot(figsize=(12,9), color='Black', linewidth=.25)
 
     # Plot the ZIP lines
-    # plot_zip_boundaries = filter_out_territories(zip_geo_data, True)
     plot_zip_boundaries = filter_out_states(zip_geo_data, plot_states, True)
     plot_zip_boundaries.boundary.plot(ax=state_boundary_map, color='Black', linewidth=.25, alpha=.3)
-
+    # filter_states_geo_data.apply(lambda x: state_boundary_map.annotate(text=x['ZIP'], xy=x.geometry.centroid.coords[0], ha='center'), axis=1)
+    
     # Plot the ZIP's that have a provider
     filter_providers = filter_out_states(provider_data, plot_states, True)
     filter_provider_zips = list(filter_providers['ZIP'])
-    plot_providers = zip_geo_data[[x in filter_provider_zips for x in zip_geo_data['ZIP']]]
+    if len(filter_provider_zips) != 0:
+        plot_providers = zip_geo_data[[x in filter_provider_zips for x in zip_geo_data['ZIP']]]
     plot_providers.plot(ax=state_boundary_map)
-    
+
+
     plt.title('Zip codes that contain an OTP enrolled in Medicare')
     plt.show()
-    # Georgia, Massachusets, Texas, Virginia is not working correctly
-    # Hawaii is a liitle weird
-    # Figure out Alaska scaling
-    # check new hampshire I think has one weird zip
-    # South dakota, Wyoming not working at all These don't have any so I need to add in a clause that if its empty it handles it well
 
 
-all_s = 'Utah'
+# all_s = 'Utah'
 # plot_providers(all_s)
-for st in all_states:
-    plot_providers(st)
-# print(type(all_s) == str)
+# for st in all_states:
+#     plot_rates(st)
+get_dist_from_provider('Utah')
+# plot_providers('Continental')
