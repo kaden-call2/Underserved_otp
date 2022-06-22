@@ -233,21 +233,23 @@ def load_plot_providers(plot_states):
 def plot_providers(states_geo_data, zip_geo_data, provider_data, plot_states='None'):
     # Plot the State lines for the outline
     filter_states_geo_data = filter_out_states(states_geo_data, plot_states, False)
-    state_boundary_map = filter_states_geo_data.boundary.plot(figsize=(12,9), color='Black', linewidth=.25)
+    # state_boundary_map = filter_states_geo_data.boundary.plot(figsize=(12,9), color='Black', linewidth=.25)
 
     # Plot the ZIP lines
     plot_zip_boundaries = filter_out_states(zip_geo_data, plot_states, True)
-    plot_zip_boundaries.boundary.plot(ax=state_boundary_map, color='Black', linewidth=.25, alpha=.3)
+    # plot_zip_boundaries.boundary.plot(ax=state_boundary_map, color='Black', linewidth=.25, alpha=.3)
     
     # Plot the ZIP's that have a provider
     filter_providers = filter_out_states(provider_data, plot_states, True)
     filter_provider_zips = list(filter_providers['ZIP'])
     if len(filter_provider_zips) != 0:
         plot_providers = zip_geo_data[[x in filter_provider_zips for x in zip_geo_data['ZIP']]]
-    plot_providers.plot(ax=state_boundary_map)
+    # plot_providers.plot(ax=state_boundary_map)
+    plot_providers.explore()
 
-    plt.title('Zip codes that contain an OTP enrolled in Medicare')
-    plt.show()
+
+    # plt.title('Zip codes that contain an OTP enrolled in Medicare')
+    # plt.show()
 
 
 def load_plot_dist_to_providers(plot_states='None'):
@@ -256,7 +258,6 @@ def load_plot_dist_to_providers(plot_states='None'):
     states_geo_data = load_states_geo_data()
     plot_dist_to_providers(zip_geo_data, states_geo_data, provider_data, plot_states)
 
-
 def project_and_center(zip):
     zip = zip.to_frame().T
     zip = zip.set_geometry('geometry')
@@ -264,10 +265,8 @@ def project_and_center(zip):
     zip = zip.to_crs('ESRI:102008')
     return zip['geometry'].centroid.values[0]
 
-def get_provider_centers(provider_data, zip_geo_data):
-    provider_with_geo = provider_data.join(zip_geo_data.set_index(['ZIP'], verify_integrity=True), on=['ZIP'], how='left')
-    provider_with_geo = provider_with_geo.set_geometry(provider_with_geo['geometry'])
-    provider_with_geo = provider_with_geo.to_crs('ESRI:102008')
+def get_provider_centers(provider_with_geo, crs):
+    provider_with_geo = provider_with_geo.to_crs(crs)
     return provider_with_geo['geometry'].centroid
 
 def get_dist_from_provider(provider_centers, zip):
@@ -275,6 +274,7 @@ def get_dist_from_provider(provider_centers, zip):
     other_center = project_and_center(zip)
     dist = provider_centers.distance(other_center).to_numpy()
     return dist.min()
+
 
 def plot_dist_to_providers(zip_geo_data, states_geo_data, provider_data, plot_states='None'):
     # Plot the State lines for the outline
@@ -284,8 +284,13 @@ def plot_dist_to_providers(zip_geo_data, states_geo_data, provider_data, plot_st
     # Filter down the zips to what we want
     filter_zip_geo_data = filter_out_states(zip_geo_data, plot_states, True)
 
+    #
+    provider_with_geo = provider_data.join(zip_geo_data.set_index(['ZIP'], verify_integrity=True), on=['ZIP'], how='left')
+    provider_with_geo = provider_with_geo.set_geometry(provider_with_geo['geometry'])
+   
     # Get the zip centers of all zips with a provider
-    provider_centers = get_provider_centers(provider_data, zip_geo_data)
+    provider_centers = get_provider_centers(provider_with_geo, 'ESRI:102008')
+    plot_provider_centers = get_provider_centers(filter_out_states(provider_with_geo, plot_states, True), 'EPSG:4269')
 
     # Get the distances
     distances = []
@@ -294,5 +299,6 @@ def plot_dist_to_providers(zip_geo_data, states_geo_data, provider_data, plot_st
     filter_zip_geo_data['dist_to_provider'] = distances
 
     filter_zip_geo_data.plot(ax=state_boundary_map, column='dist_to_provider', legend=True)    # Now it could be good to plot the locations of the provider
+    plot_provider_centers.plot(ax=state_boundary_map, marker='o', color='red')
     plt.title('Distance from nearest OTP provider (m)')
     plt.show()    
