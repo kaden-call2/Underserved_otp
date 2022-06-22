@@ -219,6 +219,7 @@ def plot_rates(states_geo_data, zip_geo_data, year_rates_data, plot_states='None
 
     filter_year_rates_geo_nan.plot(ax=state_boundary_map, color='w')
     filter_year_rates_geo_not_nan.plot(ax=state_boundary_map, column='Tot_Opioid_Clms', legend=True)
+
     plt.title('Opiod prescriptions by zip')
     plt.show()
 
@@ -233,23 +234,21 @@ def load_plot_providers(plot_states):
 def plot_providers(states_geo_data, zip_geo_data, provider_data, plot_states='None'):
     # Plot the State lines for the outline
     filter_states_geo_data = filter_out_states(states_geo_data, plot_states, False)
-    # state_boundary_map = filter_states_geo_data.boundary.plot(figsize=(12,9), color='Black', linewidth=.25)
+    state_boundary_map = filter_states_geo_data.boundary.plot(figsize=(12,9), color='Black', linewidth=.25)
 
     # Plot the ZIP lines
     plot_zip_boundaries = filter_out_states(zip_geo_data, plot_states, True)
-    # plot_zip_boundaries.boundary.plot(ax=state_boundary_map, color='Black', linewidth=.25, alpha=.3)
+    plot_zip_boundaries.boundary.plot(ax=state_boundary_map, color='Black', linewidth=.25, alpha=.3)
     
     # Plot the ZIP's that have a provider
     filter_providers = filter_out_states(provider_data, plot_states, True)
     filter_provider_zips = list(filter_providers['ZIP'])
     if len(filter_provider_zips) != 0:
         plot_providers = zip_geo_data[[x in filter_provider_zips for x in zip_geo_data['ZIP']]]
-    # plot_providers.plot(ax=state_boundary_map)
-    plot_providers.explore()
+    plot_providers.plot(ax=state_boundary_map)
 
-
-    # plt.title('Zip codes that contain an OTP enrolled in Medicare')
-    # plt.show()
+    plt.title('Zip codes that contain an OTP enrolled in Medicare')
+    plt.show()
 
 
 def load_plot_dist_to_providers(plot_states='None'):
@@ -269,11 +268,14 @@ def get_provider_centers(provider_with_geo, crs):
     provider_with_geo = provider_with_geo.to_crs(crs)
     return provider_with_geo['geometry'].centroid
 
-def get_dist_from_provider(provider_centers, zip):
+def get_dist_from_provider(provider_centers, zip, return_index=False):
     # Distance is returned in meters.
     other_center = project_and_center(zip)
     dist = provider_centers.distance(other_center).to_numpy()
-    return dist.min()
+    if not return_index:
+        return dist.min()
+    else:
+        return np.argmin(dist)
 
 
 def plot_dist_to_providers(zip_geo_data, states_geo_data, provider_data, plot_states='None'):
@@ -302,3 +304,25 @@ def plot_dist_to_providers(zip_geo_data, states_geo_data, provider_data, plot_st
     plot_provider_centers.plot(ax=state_boundary_map, marker='o', color='red')
     plt.title('Distance from nearest OTP provider (m)')
     plt.show()    
+
+
+
+
+# Make function to calculate how many prescriptions where that provider is the nearest one
+def get_number_closest(zip_geo_data, states_geo_data, provider_data, year_rates_data, plot_states='None'):
+    filter_states_geo_data = filter_out_states(states_geo_data, plot_states, False)
+    state_boundary_map = filter_states_geo_data.boundary.plot(figsize=(12,9), color='Black', lindwidth=.25)
+
+    filter_zip_geo_data = filter_out_states(zip_geo_data, plot_states, True)
+
+    # What do I need?
+        # combine zip_geo with the rates_data 
+        # combine zip_geo with provider_data
+        # get the provider centers
+        # iterate through each rates and decide which provider is closest
+
+
+    # Modify the distance function to return which one is the nearest not just the distance. Put in a new argument that if active returns that
+    # Once I get that add that zips number of prescriptions to a new column
+    # Then plot on that column
+
