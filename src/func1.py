@@ -268,14 +268,12 @@ def get_provider_centers(provider_with_geo, crs):
     provider_with_geo = provider_with_geo.to_crs(crs)
     return provider_with_geo['geometry'].centroid
 
-def get_dist_from_provider(provider_centers, zip, return_index=False):
+def get_dist_from_provider(provider_centers, zip, return_index=False, max_accepted_distance=None):
     # Distance is returned in meters.
     other_center = project_and_center(zip)
     dist = provider_centers.distance(other_center).to_numpy()
     if not return_index:
         return dist.min()
-    else:
-        return np.argmin(dist)
 
 
 def plot_dist_to_providers(zip_geo_data, states_geo_data, provider_data, plot_states='None'):
@@ -286,8 +284,8 @@ def plot_dist_to_providers(zip_geo_data, states_geo_data, provider_data, plot_st
     # Filter down the zips to what we want
     filter_zip_geo_data = filter_out_states(zip_geo_data, plot_states, True)
 
-    #
-    provider_with_geo = provider_data.join(zip_geo_data.set_index(['ZIP'], verify_integrity=True), on=['ZIP'], how='left')
+    # Combine provider data with the geo data
+    provider_with_geo = provider_data.join(zip_geo_data.set_index(['ZIP'], verify_integrity=True), on=['ZIP'], how='inner')
     provider_with_geo = provider_with_geo.set_geometry(provider_with_geo['geometry'])
    
     # Get the zip centers of all zips with a provider
@@ -306,14 +304,62 @@ def plot_dist_to_providers(zip_geo_data, states_geo_data, provider_data, plot_st
     plt.show()    
 
 
+def get_nearest_provider(provider_centers, zip, max_accepted_distance):
+    if zip is None:
+        print('kkdslfjdskfjlk')
+    other_center = project_and_center(zip)
+    if other_center is None:
+        print('aaaaaaaaaaaaa')
+        print(zip)
+        print(other_center)
+
+    # print('a')
+    # print(other_center)
+    # print(type(other_center))
+    dist = provider_centers.distance(other_center).to_numpy()
+
+    if max_accepted_distance != None:
+        shortest_dist = (dist.min()) * 0.000621 # Convert to miles
+        if shortest_dist > max_accepted_distance:
+            return None
+    return np.argmin(dist)
 
 
 # Make function to calculate how many prescriptions where that provider is the nearest one
-def get_number_closest(zip_geo_data, states_geo_data, provider_data, year_rates_data, plot_states='None'):
-    filter_states_geo_data = filter_out_states(states_geo_data, plot_states, False)
-    state_boundary_map = filter_states_geo_data.boundary.plot(figsize=(12,9), color='Black', lindwidth=.25)
+def get_number_closest(zip_geo_data, states_geo_data, provider_data, year_rates_data, max_accepted_distance=2, plot_states='None'):
+    # filter_states_geo_data = filter_out_states(states_geo_data, plot_states, False)
+    # state_boundary_map = filter_states_geo_data.boundary.plot(figsize=(12,9), color='Black', lindwidth=.25)
 
-    filter_zip_geo_data = filter_out_states(zip_geo_data, plot_states, True)
+    # filter_zip_geo_data = filter_out_states(zip_geo_data, plot_states, True)
+    year_rates_with_geo = zip_geo_data.join(year_rates_data.set_index(['ZIP']), on=['ZIP'], how='right')
+
+    provider_with_geo = provider_data.join(zip_geo_data.set_index(['ZIP'], verify_integrity=True), on=['ZIP'], how='left')
+    provider_with_geo = provider_with_geo.set_geometry(provider_with_geo['geometry'])
+
+    # Get the zip centers of all zips with a provider
+    provider_centers = get_provider_centers(provider_with_geo, 'ESRI:102008')
+    # plot_provider_centers = get_provider_centers(filter_out_states(provider_with_geo, plot_states, True), 'EPSG:4269')
+
+    # Iterate over all of the zips and find the closest provider
+    # Add that to a column indicating how many people is that the closest provider
+    # If max_accepted_distance is not "None" then it must be at least that close to be counted (miles)
+    provider_with_geo['nearest_prescriptions'] = 0
+    for index, zip in year_rates_with_geo.iterrows():
+        nearest_index = get_nearest_provider(provider_centers, zip, max_accepted_distance)
+        # print(nearest_index)
+        # print(type(nearest_index))
+        if nearest_index != None:
+            provider_with_geo.iloc[nearest_index, provider_with_geo.columns.get_loc("nearest_prescriptions")] += int(zip['Tot_Opioid_Clms'].replace(',', '')) #This should be converted somwhere else
+
+
+    print(provider_with_geo)
+    # Dont think I actually need to plot this
+    # filter_zip_geo_data.plot(ax=state_boundary_map, column='dist_to_provider', legend=True)    # Now it could be good to plot the locations of the provider       
+    # plot_provider_centers.plot(ax=state_boundary_map, marker='o', color='red')
+    # plt.title('Distance from nearest OTP provider (m)')
+    # plt.show()    
+
+
 
     # What do I need?
         # combine zip_geo with the rates_data 
@@ -326,3 +372,10 @@ def get_number_closest(zip_geo_data, states_geo_data, provider_data, year_rates_
     # Once I get that add that zips number of prescriptions to a new column
     # Then plot on that column
 
+
+
+# zip_geo_data = load_zip_geo_data()
+# provider_data = load_provider_data()
+# year_rates_data = load_rates_data()
+# states_geo_data = load_states_geo_data()
+# get_number_closest(zip_geo_data, states_geo_data, provider_data, year_rates_data, max_accepted_distance=2, plot_states='None')
