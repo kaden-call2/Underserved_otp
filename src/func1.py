@@ -175,13 +175,40 @@ def load_rates_data(index=-1):
     rates_data = pd.read_csv('data/prescribing_rates.csv')
     rates_data = rates_data[rates_data['Prscrbr_Geo_Lvl'] == 'ZIP']
 
+    medicare_pop = pd.read_csv('data/ZipData.csv')
     # rates_year contains each individual year 2013-2019. 2013:index0, 2019:index6
     rates_year = []
     for year in range(2013, 2020):
         year_data = rates_data[rates_data['Year'] == year]
         year_data['ZIP'] = format_rates_zip_codes(year_data['Prscrbr_Geo_Cd'])
         rates_year.append(year_data)
-    return filter_out_territories(rates_year[index], True)
+
+
+    rates_data = rates_year[index]
+
+
+    Medicare_estimate = pd.read_csv('data/ZipData.csv')
+    Medicare_estimate['ZIP'] = [entry[-5:] for entry in Medicare_estimate['GEO_ID']]
+    Medicare_estimate = Medicare_estimate[['ZIP', 'MedPop']]
+
+    rates_data = rates_data.join(Medicare_estimate.set_index(['ZIP'], verify_integrity=True), on=['ZIP'], how='left')
+
+    new_col = []
+    for entry in rates_data['Tot_Opioid_Clms']:
+        if type(entry) == str:
+            new_col.append(int(entry.replace(',', '')))
+        else:
+            new_col.append(np.nan)
+    rates_data['Tot_Opioid_Clms'] = new_col
+    new_col = []
+    for entry in rates_data['MedPop']:
+        if entry == 0:
+            new_col.append(np.nan)
+        else:
+            new_col.append(entry)
+    rates_data['MedPop'] = new_col
+    rates_data['Claims_Per_Person'] = rates_data['Tot_Opioid_Clms']/rates_data['MedPop']
+    return filter_out_territories(rates_data, True)
 
 
 def load_states_geo_data():
@@ -196,7 +223,7 @@ def load_plot_rates(plot_states='None'):
     plot_rates(states_geo_data, zip_geo_data, year_rates_data, plot_states)
 
 
-def plot_rates(states_geo_data, zip_geo_data, year_rates_data, plot_states='None'):
+def plot_rates(states_geo_data, zip_geo_data, year_rates_data, plot_column, plot_states='None'):
     #Filter out states  of the state outlines
     filter_states_geo_data = filter_out_states(states_geo_data, plot_states, False)
     state_boundary_map = filter_states_geo_data.boundary.plot(figsize=(12,9), color='Black', linewidth=.25)
@@ -208,17 +235,38 @@ def plot_rates(states_geo_data, zip_geo_data, year_rates_data, plot_states='None
     
 
     # Convert "Tot_Opiod_Clms" to numeric column and keep track of the nan's
-    filter_year_rates_geo['Tot_Opioid_Clms'] = filter_year_rates_geo['Tot_Opioid_Clms'].fillna('-1')
-    new_col = []
-    for entry in filter_year_rates_geo['Tot_Opioid_Clms']:
-        new_col.append(int(entry.replace(',', '')))
-    filter_year_rates_geo['Tot_Opioid_Clms'] = new_col
+    # filter_year_rates_geo[plot_column] = filter_year_rates_geo[plot_column].fillna(-1)
+    # print(filter_year_rates_geo['Tot_Opioid_Clms'])
+    # new_col = []
+    # for entry in filter_year_rates_geo['Tot_Opioid_Clms']:
+    #     new_col.append(int(entry.replace(',', '')))
+    # filter_year_rates_geo['Tot_Opioid_Clms'] = new_col
 
-    filter_year_rates_geo_nan = filter_year_rates_geo[[x == -1 for x in filter_year_rates_geo['Tot_Opioid_Clms']]]
-    filter_year_rates_geo_not_nan = filter_year_rates_geo[[x != -1 for x in filter_year_rates_geo['Tot_Opioid_Clms']]]
+    # filter_year_rates_geo_nan = filter_year_rates_geo[[x == -1 for x in filter_year_rates_geo[plot_column]]]
+    # filter_year_rates_geo_not_nan = filter_year_rates_geo[[x != -1 for x in filter_year_rates_geo[plot_column]]]
 
-    filter_year_rates_geo_nan.plot(ax=state_boundary_map, color='w')
-    filter_year_rates_geo_not_nan.plot(ax=state_boundary_map, column='Tot_Opioid_Clms', legend=True)
+    # filter_year_rates_geo_nan.plot(ax=state_boundary_map, color='w')
+    # print(filter_year_rates_geo[['Claims_Per_Person', 'ZIP']])
+    for i in range(len(filter_year_rates_geo)):
+        entry = filter_year_rates_geo.iloc[i]
+        if entry['Claims_Per_Person'] < 0:
+            print(entry['ZIP'])
+            raise Exception
+    filter_year_rates_geo = filter_year_rates_geo.dropna(axis=0, subset=['Claims_Per_Person'])
+    # print(filter_year_rates_geo)
+    claims = np.array(filter_year_rates_geo['Claims_Per_Person'])
+    print(np.max(claims))
+    print(np.min(claims))
+    # print(filter_year_rates_geo)
+    # print(filter_year_rates_geo.iloc[29])
+    #29
+    # for i, c in enumerate(claims):
+    #     if c == np.inf:
+    #         print(filter_year_rates_geo.iloc[i])
+    #         print()
+    #         print()
+
+    filter_year_rates_geo.plot(ax=state_boundary_map, column='Claims_Per_Person', legend=True)
 
     plt.title('Opiod prescriptions by zip')
     plt.show()
@@ -273,7 +321,7 @@ def get_dist_from_provider(provider_centers, zip, return_index=False, max_accept
     other_center = project_and_center(zip)
     dist = provider_centers.distance(other_center).to_numpy()
     if not return_index:
-        return dist.min()
+        return dist.min() * 0.000621
 
 
 def plot_dist_to_providers(zip_geo_data, states_geo_data, provider_data, plot_states='None'):
@@ -285,7 +333,7 @@ def plot_dist_to_providers(zip_geo_data, states_geo_data, provider_data, plot_st
     filter_zip_geo_data = filter_out_states(zip_geo_data, plot_states, True)
 
     # Combine provider data with the geo data
-    provider_with_geo = provider_data.join(zip_geo_data.set_index(['ZIP'], verify_integrity=True), on=['ZIP'], how='inner')
+    provider_with_geo = provider_data.join(zip_geo_data.set_index(['ZIP'], verify_integrity=True), on=['ZIP'], how='left')
     provider_with_geo = provider_with_geo.set_geometry(provider_with_geo['geometry'])
    
     # Get the zip centers of all zips with a provider
@@ -298,47 +346,117 @@ def plot_dist_to_providers(zip_geo_data, states_geo_data, provider_data, plot_st
         distances.append(get_dist_from_provider(provider_centers, zip))
     filter_zip_geo_data['dist_to_provider'] = distances
 
-    filter_zip_geo_data.plot(ax=state_boundary_map, column='dist_to_provider', legend=True)    # Now it could be good to plot the locations of the provider
+    filter_zip_geo_data.plot(ax=state_boundary_map, column='dist_to_provider', legend=True)
     plot_provider_centers.plot(ax=state_boundary_map, marker='o', color='red')
-    plt.title('Distance from nearest OTP provider (m)')
-    plt.show()    
+    plt.title('Distance from nearest OTP provider (mile)')
+    plt.show()   
+
+
+def distance_scatter_plot(zip_geo_data, provider_data, year_rates_data, plot_states='None'):
+    # Filter down the zips to what we want
+    filter_zip_geo_data = filter_out_states(zip_geo_data, plot_states, True)
+
+    # Combine provider data with the geo data
+    provider_with_geo = provider_data.join(zip_geo_data.set_index(['ZIP'], verify_integrity=True), on=['ZIP'], how='left')
+    provider_with_geo = provider_with_geo.set_geometry(provider_with_geo['geometry'])
+   
+    # Get the zip centers of all zips with a provider
+    provider_centers = get_provider_centers(provider_with_geo, 'ESRI:102008')
+
+    # Get the distances
+    distances = []
+    for index, zip in filter_zip_geo_data.iterrows():
+        distances.append(get_dist_from_provider(provider_centers, zip))
+    filter_zip_geo_data['dist_to_provider'] = distances
+    year_rates_with_geo = filter_zip_geo_data.join(year_rates_data.set_index(['ZIP'], verify_integrity=True), on=['ZIP'], how='inner')
+
+    # TODO: see if I can get this hover thing to work
+
+    # new_col = []
+    # for entry in year_rates_with_geo['Tot_Opioid_Clms']:
+    #     if type(entry) == str:
+    #         new_col.append(int(entry.replace(',', '')))
+    #     else:
+    #         new_col.append(np.nan)
+    # year_rates_with_geo['Tot_Opioid_Clms'] = new_col
+
+    # zip_names = np.array(list(year_rates_data['ZIP']))
+    # print(len(zip_names))
+    # fig, ax = plt.subplots()
+    # scatter_plot = plt.scatter(np.array(year_rates_with_geo['dist_to_provider']), np.array(year_rates_with_geo['Tot_Opioid_Clms']))
+    # annot = ax.annotate('', xy=(0,0), xytext=(20,20), textcoords='offest points',
+    #                     bbox=dict(boxstyle="round", fc="w"),
+    #                     arrowprops=dict(arrowstyle="->"))
+    # annot.set_visible(False)
+
+    # def update_annot(ind):
+    #     pos = scatter_plot.get_offsets()[ind['ind'][0]]
+    #     annot.xy = pos
+    #     text = "{}".format(" ".join([zip_names[n] for n in ind["ind"]]))
+    #     annot.set_text(text)
+    #     # annot.get_bbox_patch().set_facecolor(cmap(norm(c[ind["ind"][0]])))
+    #     annot.get_bbox_patch().set_alpha(0.4)
+
+    # def hover(event):
+    #     vis = annot.get_visible()
+    #     if event.inaxes == ax:
+    #         cont, ind = scatter_plot.contains(event)
+    #         if cont:
+    #             update_annot(ind)
+    #             annot.set_visible(True)
+    #             fig.canvas.draw_idle()
+    #         else:
+    #             if vis:
+    #                 annot.set_visible(False)
+    #                 fig.canvas.draw_idle()
+    
+    # fig.canvas.mpl_connect('motion_notify_event', hover)
+
+    # plt.show()
+
+
+    plt.scatter(year_rates_with_geo['dist_to_provider'], year_rates_with_geo['Tot_Opioid_Clms'])
+    plt.xlabel('Distance to a provider')
+    plt.ylabel('Total Opioid Claims')
+    plt.title(plot_states)
+    plt.show()
+
 
 
 def get_nearest_provider(provider_centers, zip, max_accepted_distance):
-    if zip is None:
-        print('kkdslfjdskfjlk')
+    if max_accepted_distance == 'None':
+        max_accepted_distance = np.inf
+
+
     other_center = project_and_center(zip)
-    if other_center is None:
-        print('aaaaaaaaaaaaa')
-        print(zip)
-        print(other_center)
-
-    # print('a')
-    # print(other_center)
-    # print(type(other_center))
     dist = provider_centers.distance(other_center).to_numpy()
+    
+    shortest_dist = np.inf
+    closest = []
+    for i, d in enumerate(dist):
+        if d <= shortest_dist and d < max_accepted_distance:
+            if d < shortest_dist:
+                closest = []
+                shortest_dist = d
 
-    if max_accepted_distance != None:
-        shortest_dist = (dist.min()) * 0.000621 # Convert to miles
-        if shortest_dist > max_accepted_distance:
-            return None
-    return np.argmin(dist)
+            closest.append(i)  
+    return closest
 
 
-# Make function to calculate how many prescriptions where that provider is the nearest one
+
+# TODO: Make state filter
 def get_number_closest(zip_geo_data, states_geo_data, provider_data, year_rates_data, max_accepted_distance=2, plot_states='None'):
-    # filter_states_geo_data = filter_out_states(states_geo_data, plot_states, False)
-    # state_boundary_map = filter_states_geo_data.boundary.plot(figsize=(12,9), color='Black', lindwidth=.25)
-
     # filter_zip_geo_data = filter_out_states(zip_geo_data, plot_states, True)
-    year_rates_with_geo = zip_geo_data.join(year_rates_data.set_index(['ZIP']), on=['ZIP'], how='right')
+    year_rates_with_geo = zip_geo_data.join(year_rates_data.set_index(['ZIP']), on=['ZIP'], how='inner')
 
     provider_with_geo = provider_data.join(zip_geo_data.set_index(['ZIP'], verify_integrity=True), on=['ZIP'], how='left')
     provider_with_geo = provider_with_geo.set_geometry(provider_with_geo['geometry'])
+    if plot_states != 'None':
+        provider_with_geo = filter_out_states(provider_with_geo, plot_states, True)
+        year_rates_with_geo = filter_out_states(year_rates_with_geo, plot_states, True)
 
     # Get the zip centers of all zips with a provider
     provider_centers = get_provider_centers(provider_with_geo, 'ESRI:102008')
-    # plot_provider_centers = get_provider_centers(filter_out_states(provider_with_geo, plot_states, True), 'EPSG:4269')
 
     # Iterate over all of the zips and find the closest provider
     # Add that to a column indicating how many people is that the closest provider
@@ -346,32 +464,11 @@ def get_number_closest(zip_geo_data, states_geo_data, provider_data, year_rates_
     provider_with_geo['nearest_prescriptions'] = 0
     for index, zip in year_rates_with_geo.iterrows():
         nearest_index = get_nearest_provider(provider_centers, zip, max_accepted_distance)
-        # print(nearest_index)
-        # print(type(nearest_index))
-        if nearest_index != None:
-            provider_with_geo.iloc[nearest_index, provider_with_geo.columns.get_loc("nearest_prescriptions")] += int(zip['Tot_Opioid_Clms'].replace(',', '')) #This should be converted somwhere else
 
+        for entry in nearest_index:
+            provider_with_geo.iloc[nearest_index, provider_with_geo.columns.get_loc("nearest_prescriptions")] += zip['Tot_Opioid_Clms'] 
 
-    print(provider_with_geo)
-    # Dont think I actually need to plot this
-    # filter_zip_geo_data.plot(ax=state_boundary_map, column='dist_to_provider', legend=True)    # Now it could be good to plot the locations of the provider       
-    # plot_provider_centers.plot(ax=state_boundary_map, marker='o', color='red')
-    # plt.title('Distance from nearest OTP provider (m)')
-    # plt.show()    
-
-
-
-    # What do I need?
-        # combine zip_geo with the rates_data 
-        # combine zip_geo with provider_data
-        # get the provider centers
-        # iterate through each rates and decide which provider is closest
-
-
-    # Modify the distance function to return which one is the nearest not just the distance. Put in a new argument that if active returns that
-    # Once I get that add that zips number of prescriptions to a new column
-    # Then plot on that column
-
+    return provider_with_geo
 
 
 # zip_geo_data = load_zip_geo_data()
@@ -379,3 +476,6 @@ def get_number_closest(zip_geo_data, states_geo_data, provider_data, year_rates_
 # year_rates_data = load_rates_data()
 # states_geo_data = load_states_geo_data()
 # get_number_closest(zip_geo_data, states_geo_data, provider_data, year_rates_data, max_accepted_distance=2, plot_states='None')
+
+
+# plot_rates(load_states_geo_data(), load_zip_geo_data(), load_rates_data(), 'Claims_Per_Person', 'West Virginia')
