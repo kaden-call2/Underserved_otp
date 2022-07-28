@@ -6,6 +6,8 @@ import math
 import time
 pd.options.mode.chained_assignment = None
 
+USE_CMAP = 'Blues'
+
 
 # Map of every state/territory to its range of zip codes
 zip_map = {
@@ -52,7 +54,7 @@ zip_map = {
             'Oklahoma': [str(x) for x in list(range(73001, 74967))],
             'Oregon': [str(x) for x in list(range(97001, 97921))],
             'Pennsylvania': [str(x) for x in list(range(15001, 19641))],
-            'Rhode Island': ['0' + x for x in [str(y) for y in list(range(2801, 2941))]],
+            'Rhode Island': ['0' + x for x in [str(y) for y in list(range(2801, 2899))]],
             'South Carolina': [str(x) for x in list(range(29001, 29946))],
             'South Dakota': [str(x) for x in list(range(57001, 57800))],
             'Tennessee': [str(x) for x in list(range(37010, 38590))],
@@ -158,9 +160,9 @@ def filter_out_states(data_orig, states, using_zips):
     return data[mask]
 
 
-def load_zip_geo_data():
-    # zip_geo_data = gpd.read_file('https://www2.census.gov/geo/tiger/TIGER2019/ZCTA5/tl_2019_us_zcta510.zip')
-    zip_geo_data = gpd.read_file('https://www2.census.gov/geo/tiger/TIGER2021/ZCTA520/tl_2021_us_zcta520.zip')
+def load_zip_geo_data(path='https://www2.census.gov/geo/tiger/TIGER2021/ZCTA520/tl_2021_us_zcta520.zip'):
+    # zip_geo_data = gpd.read_file('https://www2.census.gov/geo/tiger/TIGER2021/ZCTA520/tl_2021_us_zcta520.zip')
+    zip_geo_data = gpd.read_file(path)
     zip_geo_data = zip_geo_data.rename(columns={'ZCTA5CE20':'ZIP'})
     return filter_out_territories(zip_geo_data, True)
 
@@ -211,8 +213,9 @@ def load_rates_data(index=-1):
     return filter_out_territories(rates_data, True)
 
 
-def load_states_geo_data():
-    states_geo_data = gpd.read_file('https://www2.census.gov/geo/tiger/GENZ2018/shp/cb_2018_us_state_500k.zip')
+def load_states_geo_data(path='https://www2.census.gov/geo/tiger/GENZ2018/shp/cb_2018_us_state_500k.zip'):
+    # 'https://www2.census.gov/geo/tiger/GENZ2018/shp/cb_2018_us_state_500k.zip'
+    states_geo_data = gpd.read_file(path)
     return filter_out_territories(states_geo_data, False)
 
 
@@ -223,7 +226,7 @@ def load_plot_rates(plot_states='None'):
     plot_rates(states_geo_data, zip_geo_data, year_rates_data, plot_states)
 
 
-def plot_rates(states_geo_data, zip_geo_data, year_rates_data, plot_column, plot_states='None'):
+def plot_rates(states_geo_data, zip_geo_data, year_rates_data, provider_data, plot_column, plot_states='None'):
     #Filter out states  of the state outlines
     filter_states_geo_data = filter_out_states(states_geo_data, plot_states, False)
     state_boundary_map = filter_states_geo_data.boundary.plot(figsize=(12,9), color='Black', linewidth=.25)
@@ -234,41 +237,31 @@ def plot_rates(states_geo_data, zip_geo_data, year_rates_data, plot_column, plot
     filter_year_rates_geo = filter_out_states(year_rates_geo, plot_states, True)
     
 
-    # Convert "Tot_Opiod_Clms" to numeric column and keep track of the nan's
-    # filter_year_rates_geo[plot_column] = filter_year_rates_geo[plot_column].fillna(-1)
-    # print(filter_year_rates_geo['Tot_Opioid_Clms'])
-    # new_col = []
-    # for entry in filter_year_rates_geo['Tot_Opioid_Clms']:
-    #     new_col.append(int(entry.replace(',', '')))
-    # filter_year_rates_geo['Tot_Opioid_Clms'] = new_col
-
-    # filter_year_rates_geo_nan = filter_year_rates_geo[[x == -1 for x in filter_year_rates_geo[plot_column]]]
-    # filter_year_rates_geo_not_nan = filter_year_rates_geo[[x != -1 for x in filter_year_rates_geo[plot_column]]]
-
-    # filter_year_rates_geo_nan.plot(ax=state_boundary_map, color='w')
-    # print(filter_year_rates_geo[['Claims_Per_Person', 'ZIP']])
     for i in range(len(filter_year_rates_geo)):
         entry = filter_year_rates_geo.iloc[i]
         if entry['Claims_Per_Person'] < 0:
             print(entry['ZIP'])
             raise Exception
-    filter_year_rates_geo = filter_year_rates_geo.dropna(axis=0, subset=['Claims_Per_Person'])
-    # print(filter_year_rates_geo)
-    claims = np.array(filter_year_rates_geo['Claims_Per_Person'])
-    print(np.max(claims))
-    print(np.min(claims))
-    # print(filter_year_rates_geo)
-    # print(filter_year_rates_geo.iloc[29])
-    #29
-    # for i, c in enumerate(claims):
-    #     if c == np.inf:
-    #         print(filter_year_rates_geo.iloc[i])
-    #         print()
-    #         print()
+    filter_year_rates_geo = filter_year_rates_geo.dropna(axis=0, subset=[plot_column])
 
-    filter_year_rates_geo.plot(ax=state_boundary_map, column='Claims_Per_Person', legend=True)
+    filter_year_rates_geo.plot(ax=state_boundary_map, column=plot_column, legend=True, cmap=USE_CMAP)
 
-    plt.title('Opiod prescriptions by zip')
+
+    # # Combine provider data with the geo data
+    provider_with_geo = provider_data.join(zip_geo_data.set_index(['ZIP'], verify_integrity=True), on=['ZIP'], how='left')
+    provider_with_geo = provider_with_geo.set_geometry(provider_with_geo['geometry'])
+   
+    provider_with_geo = filter_out_states(provider_with_geo, plot_states, True)
+    if len(provider_with_geo) == 0:
+        print('There are no providers')
+
+    else:
+        plot_provider_centers = get_provider_centers(filter_out_states(provider_with_geo, plot_states, True), 'EPSG:4269') 
+        plot_provider_centers.plot(ax=state_boundary_map, marker='o', color='red')
+
+
+
+    plt.title(plot_column + ' state: ' + str(plot_states))
     plt.show()
 
 
@@ -293,7 +286,7 @@ def plot_providers(states_geo_data, zip_geo_data, provider_data, plot_states='No
     filter_provider_zips = list(filter_providers['ZIP'])
     if len(filter_provider_zips) != 0:
         plot_providers = zip_geo_data[[x in filter_provider_zips for x in zip_geo_data['ZIP']]]
-    plot_providers.plot(ax=state_boundary_map)
+        plot_providers.plot(ax=state_boundary_map)
 
     plt.title('Zip codes that contain an OTP enrolled in Medicare')
     plt.show()
@@ -337,8 +330,13 @@ def plot_dist_to_providers(zip_geo_data, states_geo_data, provider_data, plot_st
     provider_with_geo = provider_with_geo.set_geometry(provider_with_geo['geometry'])
    
     # Get the zip centers of all zips with a provider
+    provider_with_geo = filter_out_states(provider_with_geo, plot_states, True)
+    if len(provider_with_geo) == 0:
+        print('There are no providers')
+        return
+
     provider_centers = get_provider_centers(provider_with_geo, 'ESRI:102008')
-    plot_provider_centers = get_provider_centers(filter_out_states(provider_with_geo, plot_states, True), 'EPSG:4269')
+    plot_provider_centers = get_provider_centers(filter_out_states(provider_with_geo, plot_states, True), 'EPSG:4269') 
 
     # Get the distances
     distances = []
@@ -346,7 +344,7 @@ def plot_dist_to_providers(zip_geo_data, states_geo_data, provider_data, plot_st
         distances.append(get_dist_from_provider(provider_centers, zip))
     filter_zip_geo_data['dist_to_provider'] = distances
 
-    filter_zip_geo_data.plot(ax=state_boundary_map, column='dist_to_provider', legend=True)
+    filter_zip_geo_data.plot(ax=state_boundary_map, column='dist_to_provider', legend=True, cmap=USE_CMAP)
     plot_provider_centers.plot(ax=state_boundary_map, marker='o', color='red')
     plt.title('Distance from nearest OTP provider (mile)')
     plt.show()   
@@ -361,7 +359,7 @@ def distance_scatter_plot(zip_geo_data, provider_data, year_rates_data, plot_sta
     provider_with_geo = provider_with_geo.set_geometry(provider_with_geo['geometry'])
    
     # Get the zip centers of all zips with a provider
-    provider_centers = get_provider_centers(provider_with_geo, 'ESRI:102008')
+    provider_centers = get_provider_centers(filter_out_states(provider_with_geo, plot_states, True), 'ESRI:102008')
 
     # Get the distances
     distances = []
@@ -443,8 +441,6 @@ def get_nearest_provider(provider_centers, zip, max_accepted_distance):
     return closest
 
 
-
-# TODO: Make state filter
 def get_number_closest(zip_geo_data, states_geo_data, provider_data, year_rates_data, max_accepted_distance=2, plot_states='None'):
     # filter_zip_geo_data = filter_out_states(zip_geo_data, plot_states, True)
     year_rates_with_geo = zip_geo_data.join(year_rates_data.set_index(['ZIP']), on=['ZIP'], how='inner')
