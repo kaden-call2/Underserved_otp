@@ -1,2 +1,8 @@
+# I actually needed to conda install geopandas
+# so painful to get all fiona/gdal bindings correct
+
 Pandas 
 Geopandas
+pulp
+svi-data
+pyzmq

@@ -16,4 +16,7 @@ open('data/prescribing_rates1.json', 'wb').write(response.content)
 
 zip_codes = gpd.read_file('https://www2.census.gov/geo/tiger/TIGER2019/ZCTA5/tl_2019_us_zcta510.zip')
 # print(zip_codes)
-zip_codes.to_file('zip_codes.shp')
+zip_codes.to_file('data/zip_geo_data.shp')
+
+states = gpd.read_file('https://www2.census.gov/geo/tiger/TIGER2019/STATE/tl_2019_us_state.zip')
+states.to_file('data/states_geo_data.shp')
