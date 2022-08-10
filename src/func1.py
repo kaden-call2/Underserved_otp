@@ -260,8 +260,11 @@ def plot_rates(states_geo_data, zip_geo_data, year_rates_data, provider_data, pl
         plot_provider_centers.plot(ax=state_boundary_map, marker='o', color='red')
 
 
+    if plot_column == 'Tot_Opioid_Clms':
+        plt.title('Total Opioid Claims: ' + str(plot_states))
 
-    plt.title(plot_column + ' state: ' + str(plot_states))
+    else:
+        plt.title(plot_column + ' state: ' + str(plot_states))
     plt.show()
 
 
