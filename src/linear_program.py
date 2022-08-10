@@ -142,7 +142,7 @@ def merge_and_get_distances(rates_data, provider_data, dist_thresh):
     merged.set_index(['RATES ZIP', 'PROVIDER ZIP'], inplace=True) 
 
     # Get the distance away in miles
-    distances = gpd.GeoSeries(merged['RATES CENTERS']).distance(gpd.GeoSeries(merged['PROVIDER CENTERS']), align=False)
+    distances = gpd.GeoSeries(merged['RATES CENTERS']).distance(gpd.GeoSeries(merged['PROVIDER CENTERS']).set_crs('ESRI:102008'), align=False)
     merged['dist'] = distances * 0.000621
 
     merged.loc[merged.xs('-1', level='PROVIDER ZIP', drop_level=False).index, 'dist'] = 0

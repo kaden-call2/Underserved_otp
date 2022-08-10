@@ -32,8 +32,9 @@ root
 
 
 Next
-    - Fix the continental US filter
     - Find data to nomalize and implement it
-    - Add marker for locations of a provider on distance map
+    x Add marker for locations of a provider on distance map
     - Make distance map interactive? hover will show you prescription number, zip code, distance to provider, population on medicare
     - add a interactive part to provider to show how many prescriptions where that is the nearest provider
+
+    - Fix the continental US filter
