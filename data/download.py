@@ -15,5 +15,4 @@ with open('data/api_key.txt', 'r') as infile:
     key = infile.read()
 # Download the data from census API
 svi_zips = svi_data.get_svi(key,'zip',2019)
-svi_zips['ZIP'] = svi_zips['GEO_ID'].str[-5:]
-open('data/SVI_data.csv', 'wb').write(svi_zips)
+open('data/ZipData.csv', 'wb').write(svi_zips)
