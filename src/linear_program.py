@@ -3,13 +3,10 @@ from matplotlib import pyplot as plt
 import pandas as pd
 import geopandas as gpd
 import numpy as np
-from zmq import USE_FD
 # import func1 as f1
 from src import func1 as f1
 from shapely.geometry import Point
 import warnings
-import time
-warnings.filterwarnings("ignore", category=DeprecationWarning) 
 
 PERCENT_MEDICAREPOP_NEED_TREATMENT = .05
 DUMMY_PROVIDER_DISTANCE = 99999
@@ -142,7 +139,7 @@ def merge_and_get_distances(rates_data, provider_data, dist_thresh):
     merged.set_index(['RATES ZIP', 'PROVIDER ZIP'], inplace=True) 
 
     # Get the distance away in miles
-    distances = gpd.GeoSeries(merged['RATES CENTERS']).distance(gpd.GeoSeries(merged['PROVIDER CENTERS']), align=False)
+    distances = gpd.GeoSeries(merged['RATES CENTERS']).distance(gpd.GeoSeries(merged['PROVIDER CENTERS']).set_crs('ESRI:102008'), align=False)
     merged['dist'] = distances * 0.000621
 
     merged.loc[merged.xs('-1', level='PROVIDER ZIP', drop_level=False).index, 'dist'] = 0
