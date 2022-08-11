@@ -3,6 +3,9 @@
 
 Pandas 
 Geopandas
+Numpy
 pulp
 svi-data
 pyzmq
+Matplotlib
+shapely

@@ -2,8 +2,6 @@ import pandas as pd
 import geopandas as gpd
 import numpy as np
 from matplotlib import pyplot as plt
-import math
-import time
 pd.options.mode.chained_assignment = None
 
 USE_CMAP = 'Blues'
@@ -247,7 +245,7 @@ def plot_rates(states_geo_data, zip_geo_data, year_rates_data, provider_data, pl
     filter_year_rates_geo.plot(ax=state_boundary_map, column=plot_column, legend=True, cmap=USE_CMAP)
 
 
-    # # Combine provider data with the geo data
+    # Combine provider data with the geo data
     provider_with_geo = provider_data.join(zip_geo_data.set_index(['ZIP'], verify_integrity=True), on=['ZIP'], how='left')
     provider_with_geo = provider_with_geo.set_geometry(provider_with_geo['geometry'])
    
@@ -260,9 +258,10 @@ def plot_rates(states_geo_data, zip_geo_data, year_rates_data, provider_data, pl
         plot_provider_centers.plot(ax=state_boundary_map, marker='o', color='red')
 
     if plot_column == 'Tot_Opioid_Clms':
-        plt.title('Total Opioid Claims:' + str(plot_states))
+        plt.title('Total Opioid Claims: ' + str(plot_states))
 
-    plt.title(plot_column + ': ' + str(plot_states))
+    else:
+        plt.title(plot_column + ': ' + str(plot_states))
     plt.show()
 
 

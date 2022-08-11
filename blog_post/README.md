@@ -10,8 +10,10 @@ Service gaps have two components -- one is a service provider nearby? Hot spots 
 
 ![PNG](PA_Distance.png)
 
-A second component of service gaps are service providers who are themselves overburdened. Even if a provider is nearby, the total demand for a provider may be too large. We have developed in-house data science tools to estimate that potential left-over demand. The zip-code with the highest left over demand (?????) is in 
+A second component of service gaps are service providers who are themselves overburdened. Even if a provider is nearby, the total demand for a provider may be too large. We have developed in-house data science tools to estimate that potential left-over demand. The zip-code that has the highest OTP undersupply is located in Philidelphia. In addition the 4th highest is also located in Philidelphia. Even though there are several providers in the area, they are overburdened.
 
-![PNG](PA_unassigned.png)
+![PNG](PA_unassigned.png) 
+
+![PNG](PA_top5_table.png)
 
 Gainwell’s data science and machine learning team has the capabilities to help direct states to either areas where investment in new Opioid treatment centers should be sited, or where current capacity should be expanded to meet potential demand.

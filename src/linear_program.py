@@ -3,13 +3,10 @@ from matplotlib import pyplot as plt
 import pandas as pd
 import geopandas as gpd
 import numpy as np
-from zmq import USE_FD
 # import func1 as f1
 from src import func1 as f1
 from shapely.geometry import Point
 import warnings
-import time
-warnings.filterwarnings("ignore", category=DeprecationWarning) 
 
 PERCENT_MEDICAREPOP_NEED_TREATMENT = .05
 DUMMY_PROVIDER_DISTANCE = 99999
@@ -216,7 +213,7 @@ def run_model(provider_data, zip_geo_data, rates_data, state, dist_thresh, plot_
         filter_states_geo_data = f1.filter_out_states(f1.load_states_geo_data('data/state_shapes/states_geo_data.shp'), state, False)
         state_boundary_map = filter_states_geo_data.boundary.plot(figsize=(12,9), color='Black', linewidth=.25)
         unassigned.plot(ax=state_boundary_map, column='picked', legend=True, cmap=USE_CMAP)
-        plt.title('unassgined: ' + state)
+        plt.title('OTP Undersupply: ' + state)
         plt.show()
 
     return pulp.value(P.objective), merged, unassigned
