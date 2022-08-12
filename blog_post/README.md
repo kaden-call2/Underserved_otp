@@ -2,7 +2,7 @@
 
 by [Andrew Wheeler](mailto:Andrew.wheeler@gainwelltechnologies.com) & Kaden Call
 
-Opioid abuse is currently a major factor in public health. An important component of improving outcomes for individuals abusing opioids is to identify service gaps. Our Data Science team at Gainwell can identify such gaps via data analytics. Below is an example map for Pennslyvania, showing locations of CMS service providers and total *Opioid claims* per zip code:
+Opioid abuse is currently a major factor in public health. An important component of improving outcomes for individuals abusing opioids is to identify service gaps. It is possible to identify such gaps via data analytics. Below is an example map for Pennslyvania, showing locations of CMS service providers and total *Opioid claims* per zip code:
 
 ![PNG](PA_Claims.png)
 
@@ -24,4 +24,4 @@ The zip-code that has the highest OTP undersupply is located in Philidelphia. In
 | 18103    | Philadelphia | 590            |
 | 17601    | Lancaster    | 561            |
 
-Gainwell’s data science and machine learning team has the capabilities to help direct states to either areas where investment in new Opioid treatment centers should be sited, or where current capacity should be expanded to meet potential demand.
+Using machine learning techniques we have the capability to help direct states to either areas where investment in new Opioid treatment centers should be sited, or where current capacity should be expanded to meet potential demand.
